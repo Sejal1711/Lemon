@@ -1,0 +1,75 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("PRISMA_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id         String         @id @default(cuid())
+  name       String?
+  email      String         @unique
+  image      String?
+  accounts   OAuthAccount[]
+  workflows  Workflow[]
+  emailCache EmailCache[]
+  createdAt  DateTime       @default(now())
+}
+
+model OAuthAccount {
+  id                String   @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  accessToken       String
+  refreshToken      String?  // Add ? to make it optional
+  expiresAt         DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model EmailCache {
+  id         String   @id @default(cuid())
+  userId     String
+  emailId    String
+  sender     String
+  subject    String
+  snippet    String
+  body       String?
+  receivedAt DateTime
+  replied    Boolean  @default(false)
+  summary    String?
+  intent     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, emailId])
+}
+
+model Workflow {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  trigger   Json
+  steps     Json
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  executions WorkflowExecution[]
+}
+
+model WorkflowExecution {
+  id         String    @id @default(cuid())
+  workflowId String
+  status     String
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  logs       Json?
+
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+}
