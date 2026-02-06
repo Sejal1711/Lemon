@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { prisma } from "./prisma";
+import { summarizeEmail } from "./ai";
 
 export async function getGmailClient(userId: string) {
   // Get user's OAuth account
@@ -156,10 +157,13 @@ export async function fetchEmails(
     })
   );
 
-  // Cache emails in database
+  // Cache emails in database WITH AI SUMMARY
   await Promise.all(
-    emailDetails.map((email: EmailDetail) =>
-      prisma.emailCache.upsert({
+    emailDetails.map(async (email: EmailDetail) => {
+      // Generate AI summary
+      const summary = await summarizeEmail(email.body);
+
+      return prisma.emailCache.upsert({
         where: {
           userId_emailId: {
             userId,
@@ -171,6 +175,7 @@ export async function fetchEmails(
           subject: email.subject,
           snippet: email.snippet,
           body: email.body,
+          summary: summary, // Add AI summary here
           receivedAt: email.receivedAt,
         },
         create: {
@@ -180,10 +185,11 @@ export async function fetchEmails(
           subject: email.subject,
           snippet: email.snippet,
           body: email.body,
+          summary: summary, // Add AI summary here
           receivedAt: email.receivedAt,
         },
-      })
-    )
+      });
+    })
   );
 
   return emailDetails;
