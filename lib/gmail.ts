@@ -235,3 +235,40 @@ export async function markEmailAsReplied(userId: string, emailId: string) {
     },
   });
 }
+
+export async function sendEmail(
+  userId: string,
+  emailData: {
+    to: string;
+    subject: string;
+    body: string;
+    inReplyTo?: string; // Original email ID for threading
+  }
+) {
+  const gmail = await getGmailClient(userId);
+
+  // Create email in RFC 2822 format
+  const message = [
+    `To: ${emailData.to}`,
+    `Subject: ${emailData.subject}`,
+    'Content-Type: text/plain; charset=utf-8',
+    '',
+    emailData.body,
+  ].join('\n');
+
+  const encodedMessage = Buffer.from(message)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  const result = await gmail.users.messages.send({
+    userId: 'me',
+    requestBody: {
+      raw: encodedMessage,
+      threadId: emailData.inReplyTo, // Optional: keep in same thread
+    },
+  });
+
+  return result.data;
+}

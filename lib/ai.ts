@@ -18,3 +18,28 @@ export async function summarizeEmail(emailBody: string): Promise<string> {
     return emailBody.substring(0, 100) + '...';
   }
 }
+export async function generateReply(emailData: {
+  subject: string;
+  body: string;
+  sender: string;
+}): Promise<string> {
+  try {
+    const { text } = await generateText({
+      model: groq('llama-3.3-70b-versatile'),
+      prompt: `You are a professional email assistant. Generate a polite and professional reply to this email.
+
+From: ${emailData.sender}
+Subject: ${emailData.subject}
+
+Email Body:
+${emailData.body}
+
+Generate a professional reply (just the body text, no subject line or greeting duplicates):`,
+    });
+
+    return text.trim();
+  } catch (error) {
+    console.error('AI reply generation error:', error);
+    throw new Error('Failed to generate reply');
+  }
+}
